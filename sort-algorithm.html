@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>排序演算法視覺化教室</title>
+  
+  <!-- 引入 React 和 ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  
+  <!-- 引入 Babel 用於解析 JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- 引入 Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback } = React;
+
+    // --- 圖示組件 (SVG) ---
+    const IconWrapper = ({ children, className }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        {children}
+      </svg>
+    );
+
+    const Play = ({ className }) => <IconWrapper className={className}><polygon points="5 3 19 12 5 21 5 3" /></IconWrapper>;
+    const Square = ({ className }) => <IconWrapper className={className}><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /></IconWrapper>;
+    const Pause = ({ className }) => <IconWrapper className={className}><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></IconWrapper>;
+    const RotateCcw = ({ className }) => <IconWrapper className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 12" /><path d="M3 5v7h7" /></IconWrapper>;
+    const BarChart3 = ({ className }) => <IconWrapper className={className}><path d="M3 3v18h18" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></IconWrapper>;
+    const Info = ({ className }) => <IconWrapper className={className}><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></IconWrapper>;
+    const Zap = ({ className }) => <IconWrapper className={className}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></IconWrapper>;
+    const Settings = ({ className }) => <IconWrapper className={className}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></IconWrapper>;
+    const BookOpen = ({ className }) => <IconWrapper className={className}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></IconWrapper>;
+    const Globe = ({ className }) => <IconWrapper className={className}><circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></IconWrapper>;
+    const ChevronLeft = ({ className }) => <IconWrapper className={className}><polyline points="15 18 9 12 15 6" /></IconWrapper>;
+    const ChevronRight = ({ className }) => <IconWrapper className={className}><polyline points="9 18 15 12 9 6" /></IconWrapper>;
+
+
+    // --- 顏色常數 ---
+    const PRIMARY_COLOR = 'bg-blue-500'; 
+    const COMPARING_COLOR = 'bg-yellow-400'; 
+    const SWAP_COLOR = 'bg-red-500'; 
+    const SORTED_COLOR = 'bg-green-500'; 
+    const MERGE_RANGE_COLOR = 'bg-purple-300'; 
+
+    // --- 多語言資料庫 ---
+    const translations = {
+      zh: {
+        title: '排序演算法視覺化教室',
+        selectAlgo: '選擇演算法',
+        speed: '動畫速度 (越右越慢)',
+        fast: '快',
+        slow: '慢',
+        size: '資料數量',
+        start: '播放',
+        stop: '暫停',
+        reset: '重置數據',
+        prev: '上一步',
+        next: '下一步',
+        unsorted: '未排序',
+        comparing: '比較中',
+        swapping: '交換/寫入',
+        sorted: '已完成',
+        range: '範圍/基準/堆積',
+        statsTitle: '執行統計',
+        comparisons: '比較次數 (Comparisons)',
+        accesses: '陣列存取 (Accesses)',
+        currentState: '當前狀態',
+        step: '目前步驟',
+        sorting: '播放中...',
+        paused: '已暫停',
+        finished: '排序完成',
+        best: '最佳情況',
+        avg: '平均情況',
+        worst: '最差情況',
+        algorithms: {
+          bubble: {
+            name: '氣泡排序 (Bubble Sort)',
+            desc: '最直觀的排序法。重複走訪陣列，比較相鄰的元素，如果順序錯誤就交換它們。像是氣泡一樣，最大的元素會慢慢「浮」到最後面。'
+          },
+          selection: {
+            name: '選擇排序 (Selection Sort)',
+            desc: '將陣列分為「已排序」和「未排序」兩部分。每次從未排序區域中「選擇」出最小的元素，放到已排序區域的末端。'
+          },
+          insertion: {
+            name: '插入排序 (Insertion Sort)',
+            desc: '像玩撲克牌理牌一樣。將未排序的元素一個個取出，插入到已排序區域中的正確位置。對於接近排序完成的資料非常有效。'
+          },
+          merge: {
+            name: '合併排序 (Merge Sort)',
+            desc: '採用「分治法」。將陣列切一半直到只剩一個元素，然後將這些小陣列依序「合併」成有序的大陣列。'
+          },
+          quick: {
+            name: '快速排序 (Quick Sort)',
+            desc: '也是採用分治法。挑選一個基準點 (Pivot)，將小於它的放左邊，大於它的放右邊，然後對左右兩邊遞迴重複此步驟。效率極高。'
+          },
+          heap: {
+            name: '堆積排序 (Heap Sort) *',
+            desc: '利用「二元堆積樹」的特性。首先建立最大堆積 (Max Heap)，將堆頂的最大值與末尾交換，縮小堆積範圍並重新調整，重複此動作直到排序完成。'
+          },
+          cocktail: {
+            name: '雞尾酒排序 (Cocktail Sort) *',
+            desc: '氣泡排序的改良版，又稱雙向氣泡排序。它先由左向右氣泡，再由右向左氣泡，能解決氣泡排序中「烏龜元素」(小的數在尾端) 移動緩慢的問題。'
+          },
+          shell: {
+            name: '希爾排序 (Shell Sort) *',
+            desc: '插入排序的改良版。先以較大的間隔 (Gap) 進行分組插入排序，讓元素能快速跨越長距離移動，最後再進行間隔為 1 的插入排序。'
+          }
+        }
+      },
+      ja: {
+        title: 'ソートアルゴリズム可視化教室',
+        selectAlgo: 'アルゴリズム選択',
+        speed: '再生速度 (右に行くほど遅い)',
+        fast: '速い',
+        slow: '遅い',
+        size: 'データ数',
+        start: '再生',
+        stop: '一時停止',
+        reset: 'リセット',
+        prev: '前のステップ',
+        next: '次のステップ',
+        unsorted: '未ソート',
+        comparing: '比較中',
+        swapping: '交換/書き込み',
+        sorted: '完了',
+        range: '範囲/Pivot/Heap',
+        statsTitle: '実行統計',
+        comparisons: '比較回数 (Comparisons)',
+        accesses: 'アクセス回数 (Accesses)',
+        currentState: '現在の状態',
+        step: '現在のステップ',
+        sorting: '再生中...',
+        paused: '一時停止',
+        finished: '完了',
+        best: '最良計算量',
+        avg: '平均計算量',
+        worst: '最悪計算量',
+        algorithms: {
+          bubble: {
+            name: 'バブルソート (Bubble Sort)',
+            desc: '最も直感的なソート方法です。隣り合う要素を比較し、順序が逆であれば交換します。泡のように、最大の要素が徐々に最後尾へ「浮かび上がって」いきます。'
+          },
+          selection: {
+            name: '選択ソート (Selection Sort)',
+            desc: '配列を「ソート済み」と「未ソート」の部分に分けます。毎回、未ソート領域から最小の要素を「選択」し、ソート済み領域の末尾に追加します。'
+          },
+          insertion: {
+            name: '挿入ソート (Insertion Sort)',
+            desc: 'トランプの手札を整えるような方法です。未ソートの要素を一つずつ取り出し、ソート済み領域の正しい位置に挿入します。ある程度整列されたデータに対して非常に効率的です。'
+          },
+          merge: {
+            name: 'マージソート (Merge Sort)',
+            desc: '「分割統治法」を採用しています。配列を1つの要素になるまで半分に分割し続け、それらを順序通りに「マージ（統合）」して大きな整列済み配列を作ります。'
+          },
+          quick: {
+            name: 'クイックソート (Quick Sort)',
+            desc: 'これも分割統治法を使います。ピボット（基準値）を選び、それより小さい要素を左、大きい要素を右に移動させ、左右の部分配列に対して再帰的に処理します。'
+          },
+          heap: {
+            name: 'ヒープソート (Heap Sort) *',
+            desc: '二分ヒープ（Binary Heap）を利用します。最大ヒープを構築し、根（最大値）を末尾と交換してヒープサイズを減らし、再構築する手順を繰り返します。'
+          },
+          cocktail: {
+            name: 'シェーカーソート (Cocktail Sort) *',
+            desc: 'バブルソートの改良版で、双方向バブルソートとも呼ばれます。左から右へ、次は右から左へとスキャンすることで、小さな値が末尾にある場合に素早く移動できます。'
+          },
+          shell: {
+            name: 'シェルソート (Shell Sort) *',
+            desc: '挿入ソートの改良版です。大きな間隔（ギャップ）でグループ分けして挿入ソートを行い、要素を大きく移動させ、徐々に間隔を狭めていきます。'
+          }
+        }
+      }
+    };
+
+    // --- 主程式組件 ---
+    const SortingVisualizer = () => {
+      const [language, setLanguage] = useState('zh');
+      const [arraySize, setArraySize] = useState(20);
+      const [sortingSpeed, setSortingSpeed] = useState(100);
+      const [selectedAlgorithm, setSelectedAlgorithm] = useState('bubble');
+      
+      const [steps, setSteps] = useState([]); 
+      const [currentStepIndex, setCurrentStepIndex] = useState(0);
+      const [isPlaying, setIsPlaying] = useState(false);
+      const [isFinished, setIsFinished] = useState(false);
+
+      const t = translations[language];
+      const timerRef = useRef(null);
+
+      useEffect(() => {
+        generateNewArray();
+      }, []);
+
+      const handleAlgorithmChange = (e) => {
+        setSelectedAlgorithm(e.target.value);
+        setTimeout(() => generateNewArray(arraySize, e.target.value), 0);
+      };
+
+      const handleSizeChange = (e) => {
+        const size = parseInt(e.target.value);
+        setArraySize(size);
+        generateNewArray(size, selectedAlgorithm);
+      };
+
+      const generateNewArray = (size = arraySize, algo = selectedAlgorithm) => {
+        setIsPlaying(false);
+        setIsFinished(false);
+        if (timerRef.current) clearInterval(timerRef.current);
+
+        // 1. 產生有序陣列
+        const tempArray = [];
+        for (let i = 1; i <= size; i++) {
+          tempArray.push({ value: i, state: 'default' });
+        }
+
+        // 2. 洗牌
+        for (let i = tempArray.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [tempArray[i], tempArray[j]] = [tempArray[j], tempArray[i]];
+        }
+
+        // 3. 計算步驟
+        const initialStep = {
+          array: JSON.parse(JSON.stringify(tempArray)),
+          comparisons: 0,
+          accesses: 0
+        };
+        
+        let calculatedSteps = [initialStep];
+
+        switch (algo) {
+          case 'bubble': calculatedSteps = generateBubbleSortSteps(tempArray); break;
+          case 'selection': calculatedSteps = generateSelectionSortSteps(tempArray); break;
+          case 'insertion': calculatedSteps = generateInsertionSortSteps(tempArray); break;
+          case 'merge': calculatedSteps = generateMergeSortSteps(tempArray); break;
+          case 'quick': calculatedSteps = generateQuickSortSteps(tempArray); break;
+          case 'heap': calculatedSteps = generateHeapSortSteps(tempArray); break;
+          case 'cocktail': calculatedSteps = generateCocktailSortSteps(tempArray); break;
+          case 'shell': calculatedSteps = generateShellSortSteps(tempArray); break;
+          default: break;
+        }
+
+        setSteps(calculatedSteps);
+        setCurrentStepIndex(0);
+      };
+
+      const createSnapshot = (arr, comparisons, accesses) => {
+        return {
+          array: JSON.parse(JSON.stringify(arr)),
+          comparisons,
+          accesses
+        };
+      };
+
+      // --- 演算法 ---
+      const generateBubbleSortSteps = (initialArray) => {
+        let arr = JSON.parse(JSON.stringify(initialArray));
+        const history = [];
+        let comparisons = 0;
+        let accesses = 0;
+        const n = arr.length;
+        history.push(createSnapshot(arr, comparisons, accesses));
+        for (let i = 0; i < n - 1; i++) {
+          for (let j = 0; j < n - i - 1; j++) {
+            arr[j].state = 'comparing';
+            arr[j + 1].state = 'comparing';
+            comparisons++;
+            history.push(createSnapshot(arr, comparisons, accesses));
+            if (arr[j].value > arr[j + 1].value) {
+              arr[j].state = 'swapping';
+              arr[j + 1].state = 'swapping';
+              history.push(createSnapshot(arr, comparisons, accesses));
+              let temp = arr[j];
+              arr[j] = arr[j + 1];
+              arr[j + 1] = temp;
+              accesses += 2;
+              history.push(createSnapshot(arr, comparisons, accesses));
+            }
+            arr[j].state = 'default';
+            arr[j + 1].state = 'default';
+          }
+          arr[n - i - 1].state = 'sorted';
+          history.push(createSnapshot(arr, comparisons, accesses));
+        }
+        arr[0].state = 'sorted';
+        history.push(createSnapshot(arr, comparisons, accesses));
+        return history;
+      };
+
+      const generateSelectionSortSteps = (initialArray) => {
+        let arr = JSON.parse(JSON.stringify(initialArray));
+        const history = [];
+        let comparisons = 0;
+        let accesses = 0;
+        const n = arr.length;
+        history.push(createSnapshot(arr, comparisons, accesses));
+        for (let i = 0; i < n; i++) {
+          let minIdx = i;
+          arr[i].state = 'swapping'; 
+          history.push(createSnapshot(arr, comparisons, accesses));
+          for (let j = i + 1; j < n; j++) {
+            arr[j].state = 'comparing';
+            comparisons++;
+            history.push(createSnapshot(arr, comparisons, accesses));
+            if (arr[j].value < arr[minIdx].value) {
+              if (minIdx !== i) arr[minIdx].state = 'default';
+              minIdx = j;
+              arr[minIdx].state = 'swapping'; 
+              history.push(createSnapshot(arr, comparisons, accesses));
+            } else {
+              arr[j].state = 'default';
+            }
+          }
+          if (minIdx !== i) {
+            let temp = arr[i];
+            arr[i] = arr[minIdx];
+            arr[minIdx] = temp;
+            accesses += 2;
+            history.push(createSnapshot(arr, comparisons, accesses));
+          }
+          arr[minIdx].state = 'default'; 
+          arr[i].state = 'sorted';
+          history.push(createSnapshot(arr, comparisons, accesses));
+        }
+        return history;
+      };
+
+      const generateInsertionSortSteps = (initialArray) => {
+        let arr = JSON.parse(JSON.stringify(initialArray));
+        const history = [];
+        let comparisons = 0;
+        let accesses = 0;
+        const n = arr.length;
+        arr[0].state = 'sorted';
+        history.push(createSnapshot(arr, comparisons, accesses));
+        for (let i = 1; i < n; i++) {
+          let keyVal = arr[i].value; 
+          let keyItem = {...arr[i]}; 
+          let j = i - 1;
+          arr[i].state = 'swapping'; 
+          history.push(createSnapshot(arr, comparisons, accesses));
+          while (j >= 0 && arr[j].value > keyVal) {
+            comparisons++;
+            arr[j].state = 'comparing';
+            history.push(createSnapshot(arr, comparisons, accesses));
+            arr[j + 1] = {...arr[j]}; 
+            arr[j + 1].state = 'sorted'; 
+            accesses++;
+            arr[j].state = 'sorted'; 
+            history.push(createSnapshot(arr, comparisons, accesses));
+            j = j - 1;
+          }
+          if (j >= 0) {
+              comparisons++;
+              arr[j].state = 'comparing';
+              history.push(createSnapshot(arr, comparisons, accesses));
+              arr[j].state = 'sorted';
+          }
+          arr[j + 1] = keyItem;
+          arr[j + 1].value = keyVal;
+          arr[j + 1].state = 'sorted';
+          accesses++;
+          history.push(createSnapshot(arr, comparisons, accesses));
+        }
+        return history;
+      };
+
+      const generateMergeSortSteps = (initialArray) => {
+        let arr = JSON.parse(JSON.stringify(initialArray));
+        const history = [];
+        let comparisons = 0;
+        let accesses = 0;
+        history.push(createSnapshot(arr, comparisons, accesses));
+        const merge = (start, mid, end) => {
+          let left = start;
+          let right = mid + 1;
+          let tempArr = [];
+          for(let i=start; i<=end; i++) arr[i].state = 'range';
+          history.push(createSnapshot(arr, comparisons, accesses));
+          while (left <= mid && right <= end) {
+            arr[left].state = 'comparing';
+            arr[right].state = 'comparing';
+            comparisons++;
+            history.push(createSnapshot(arr, comparisons, accesses));
+            if (arr[left].value <= arr[right].value) {
+              tempArr.push(arr[left].value);
+              arr[left].state = 'range'; 
+              left++;
+            } else {
+              tempArr.push(arr[right].value);
+              arr[right].state = 'range';
+              right++;
+            }
+            accesses++;
+          }
+          while (left <= mid) {
+            tempArr.push(arr[left].value);
+            accesses++;
+            left++;
+          }
+          while (right <= end) {
+            tempArr.push(arr[right].value);
+            accesses++;
+            right++;
+          }
+          for (let i = 0; i < tempArr.length; i++) {
+            arr[start + i].value = tempArr[i];
+            arr[start + i].state = 'swapping';
+            history.push(createSnapshot(arr, comparisons, accesses));
+            arr[start + i].state = 'sorted'; 
+          }
+          history.push(createSnapshot(arr, comparisons, accesses));
+        };
+        const mergeSortRec = (start, end) => {
+          if (start >= end) return;
+          const mid = Math.floor((start + end) / 2);
+          mergeSortRec(start, mid);
+          mergeSortRec(mid + 1, end);
+          merge(start, mid, end);
+        };
+        mergeSortRec(0, arr.length - 1);
+        arr.forEach(item => item.state = 'sorted');
+        history.push(createSnapshot(arr, comparisons, accesses));
+        return history;
+      };
+
+      const generateQuickSortSteps = (initialArray) => {
+        let arr = JSON.parse(JSON.stringify(initialArray));
+        const history = [];
+        let comparisons = 0;
+        let accesses = 0;
+        history.push(createSnapshot(arr, comparisons, accesses));
+        const partition = (low, high) => {
+            let pivotIndex = high;
+            let pivotValue = arr[high].value;
+            arr[pivotIndex].state = 'range'; 
+            history.push(createSnapshot(arr, comparisons, accesses));
+            let i = low - 1;
+            for (let j = low; j < high; j++) {
+                arr[j].state = 'comparing';
+                comparisons++;
+                history.push(createSnapshot(arr, comparisons, accesses));
+                if (arr[j].value < pivotValue) {
+                    i++;
+                    if (i !== j) {
+                        arr[i].state = 'swapping';
+                        arr[j].state = 'swapping';
+                        history.push(createSnapshot(arr, comparisons, accesses));
+                        let temp = arr[i];
+                        arr[i] = arr[j];
+                        arr[j] = temp;
+                        accesses += 2;
+                        history.push(createSnapshot(arr, comparisons, accesses));
+                        arr[i].state = 'default';
+                        arr[j].state = 'default';
+                    }
+                }
+                if (arr[j].state !== 'range') arr[j].state = 'default';
+                if (i >= 0 && arr[i].state !== 'range') arr[i].state = 'default';
+            }
+            i++;
+            if (i !== high) {
+                arr[i].state = 'swapping';
+                arr[high].state = 'swapping';
+                history.push(createSnapshot(arr, comparisons, accesses));
+                let temp = arr[i];
+                arr[i] = arr[high];
+                arr[high] = temp;
+                accesses += 2;
+                history.push(createSnapshot(arr, comparisons, accesses));
+            }
+            arr[i].state = 'sorted';
+            if (high !== i) arr[high].state = 'default';
+            history.push(createSnapshot(arr, comparisons, accesses));
+            return i;
+        };
+        const quickSortRec = (low, high) => {
+            if (low < high) {
+                let pi = partition(low, high);
+                quickSortRec(low, pi - 1);
+                quickSortRec(pi + 1, high);
+            } else if (low === high) {
+                arr[low].state = 'sorted';
+                history.push(createSnapshot(arr, comparisons, accesses));
+            }
+        };
+        quickSortRec(0, arr.length - 1);
+        arr.forEach(item => item.state = 'sorted');
+        history.push(createSnapshot(arr, comparisons, accesses));
+        return history;
+      };
+
+      const generateHeapSortSteps = (initialArray) => {
+        let arr = JSON.parse(JSON.stringify(initialArray));
+        const history = [];
+        let comparisons = 0;
+        let accesses = 0;
+        const n = arr.length;
+        history.push(createSnapshot(arr, comparisons, accesses));
+        const heapify = (n, i) => {
+            let largest = i;
+            let left = 2 * i + 1;
+            let right = 2 * i + 2;
+            arr[largest].state = 'range'; 
+            if (left < n) arr[left].state = 'comparing';
+            if (right < n) arr[right].state = 'comparing';
+            history.push(createSnapshot(arr, comparisons, accesses));
+            if (left < n) {
+                comparisons++;
+                if (arr[left].value > arr[largest].value) {
+                    if (largest !== i) arr[largest].state = 'default';
+                    largest = left;
+                    arr[largest].state = 'range';
+                }
+            }
+            if (right < n) {
+                comparisons++;
+                if (arr[right].value > arr[largest].value) {
+                    if (largest !== i) arr[largest].state = 'default';
+                    largest = right;
+                    arr[largest].state = 'range';
+                }
+            }
+            history.push(createSnapshot(arr, comparisons, accesses));
+            if (largest !== i) {
+                arr[i].state = 'swapping';
+                arr[largest].state = 'swapping';
+                history.push(createSnapshot(arr, comparisons, accesses));
+                let temp = arr[i];
+                arr[i] = arr[largest];
+                arr[largest] = temp;
+                accesses += 2;
+                history.push(createSnapshot(arr, comparisons, accesses));
+                arr[i].state = 'default';
+                arr[largest].state = 'default';
+                heapify(n, largest);
+            } else {
+                arr[i].state = 'default';
+                if(left < n) arr[left].state = 'default';
+                if(right < n) arr[right].state = 'default';
+            }
+        };
+        for (let i = Math.floor(n / 2) - 1; i >= 0; i--) {
+            heapify(n, i);
+        }
+        for (let i = n - 1; i > 0; i--) {
+            arr[0].state = 'swapping';
+            arr[i].state = 'swapping';
+            history.push(createSnapshot(arr, comparisons, accesses));
+            let temp = arr[0];
+            arr[0] = arr[i];
+            arr[i] = temp;
+            accesses += 2;
+            history.push(createSnapshot(arr, comparisons, accesses));
+            arr[i].state = 'sorted'; 
+            arr[0].state = 'default';
+            history.push(createSnapshot(arr, comparisons, accesses));
+            heapify(i, 0);
+        }
+        arr[0].state = 'sorted';
+        history.push(createSnapshot(arr, comparisons, accesses));
+        return history;
+      };
+
+      const generateCocktailSortSteps = (initialArray) => {
+          let arr = JSON.parse(JSON.stringify(initialArray));
+          const history = [];
+          let comparisons = 0;
+          let accesses = 0;
+          let swapped = true;
+          let start = 0;
+          let end = arr.length;
+          history.push(createSnapshot(arr, comparisons, accesses));
+          while (swapped) {
+              swapped = false;
+              for (let i = start; i < end - 1; ++i) {
+                  arr[i].state = 'comparing';
+                  arr[i+1].state = 'comparing';
+                  comparisons++;
+                  history.push(createSnapshot(arr, comparisons, accesses));
+                  if (arr[i].value > arr[i + 1].value) {
+                      arr[i].state = 'swapping';
+                      arr[i+1].state = 'swapping';
+                      history.push(createSnapshot(arr, comparisons, accesses));
+                      let temp = arr[i];
+                      arr[i] = arr[i + 1];
+                      arr[i + 1] = temp;
+                      accesses += 2;
+                      swapped = true;
+                      history.push(createSnapshot(arr, comparisons, accesses));
+                  }
+                  arr[i].state = 'default';
+                  arr[i+1].state = 'default';
+              }
+              if (!swapped) break;
+              swapped = false;
+              arr[end - 1].state = 'sorted'; 
+              history.push(createSnapshot(arr, comparisons, accesses));
+              end--;
+              for (let i = end - 1; i >= start; i--) {
+                  arr[i].state = 'comparing';
+                  arr[i+1].state = 'comparing';
+                  comparisons++;
+                  history.push(createSnapshot(arr, comparisons, accesses));
+                  if (arr[i].value > arr[i + 1].value) {
+                      arr[i].state = 'swapping';
+                      arr[i+1].state = 'swapping';
+                      history.push(createSnapshot(arr, comparisons, accesses));
+                      let temp = arr[i];
+                      arr[i] = arr[i + 1];
+                      arr[i + 1] = temp;
+                      accesses += 2;
+                      swapped = true;
+                      history.push(createSnapshot(arr, comparisons, accesses));
+                  }
+                  arr[i].state = 'default';
+                  arr[i+1].state = 'default';
+              }
+              arr[start].state = 'sorted'; 
+              history.push(createSnapshot(arr, comparisons, accesses));
+              start++;
+          }
+          for(let i=0; i<arr.length; i++) arr[i].state = 'sorted';
+          history.push(createSnapshot(arr, comparisons, accesses));
+          return history;
+      };
+
+      const generateShellSortSteps = (initialArray) => {
+          let arr = JSON.parse(JSON.stringify(initialArray));
+          const history = [];
+          let comparisons = 0;
+          let accesses = 0;
+          const n = arr.length;
+          history.push(createSnapshot(arr, comparisons, accesses));
+          for (let gap = Math.floor(n/2); gap > 0; gap = Math.floor(gap/2)) {
+              for (let i = gap; i < n; i += 1) {
+                  let temp = arr[i];
+                  let j;
+                  arr[i].state = 'swapping'; 
+                  history.push(createSnapshot(arr, comparisons, accesses));
+                  for (j = i; j >= gap; j -= gap) {
+                      arr[j].state = 'comparing';
+                      arr[j-gap].state = 'comparing';
+                      comparisons++;
+                      history.push(createSnapshot(arr, comparisons, accesses));
+                      if(arr[j - gap].value > temp.value) {
+                          arr[j] = arr[j - gap];
+                          accesses++;
+                          arr[j].state = 'swapping'; 
+                          history.push(createSnapshot(arr, comparisons, accesses));
+                          arr[j].state = 'default';
+                          arr[j-gap].state = 'default';
+                      } else {
+                          arr[j].state = 'default';
+                          arr[j-gap].state = 'default';
+                          break; 
+                      }
+                  }
+                  arr[j] = temp;
+                  accesses++;
+                  arr[j].state = 'swapping'; 
+                  history.push(createSnapshot(arr, comparisons, accesses));
+                  arr[j].state = 'default';
+              }
+          }
+          for(let i=0; i<n; i++) arr[i].state = 'sorted';
+          history.push(createSnapshot(arr, comparisons, accesses));
+          return history;
+      };
+
+      // --- 控制函數 ---
+      const togglePlay = () => {
+        if (isFinished && !isPlaying) {
+          setCurrentStepIndex(0);
+          setIsFinished(false);
+          setIsPlaying(true);
+        } else {
+          setIsPlaying(!isPlaying);
+        }
+      };
+
+      const handleNext = useCallback(() => {
+        setIsPlaying(false);
+        if (currentStepIndex < steps.length - 1) {
+          setCurrentStepIndex(prev => prev + 1);
+        }
+      }, [currentStepIndex, steps.length]);
+
+      const handlePrev = useCallback(() => {
+        setIsPlaying(false);
+        if (currentStepIndex > 0) {
+          setCurrentStepIndex(prev => prev - 1);
+          setIsFinished(false);
+        }
+      }, [currentStepIndex]);
+
+      useEffect(() => {
+        if (isPlaying) {
+          timerRef.current = setInterval(() => {
+            setCurrentStepIndex(prev => {
+              if (prev < steps.length - 1) {
+                return prev + 1;
+              } else {
+                setIsPlaying(false);
+                setIsFinished(true);
+                return prev;
+              }
+            });
+          }, sortingSpeed);
+        } else {
+          if (timerRef.current) clearInterval(timerRef.current);
+        }
+        return () => {
+          if (timerRef.current) clearInterval(timerRef.current);
+        };
+      }, [isPlaying, steps.length, sortingSpeed]);
+
+      const currentData = steps[currentStepIndex] || { array: [], comparisons: 0, accesses: 0 };
+      const currentArray = currentData.array;
+
+      const getBarColor = (state) => {
+        switch (state) {
+          case 'comparing': return COMPARING_COLOR;
+          case 'swapping': return SWAP_COLOR;
+          case 'sorted': return SORTED_COLOR;
+          case 'range': return MERGE_RANGE_COLOR;
+          default: return PRIMARY_COLOR;
+        }
+      };
+
+      const complexities = {
+        bubble: { best: 'O(n)', avg: 'O(n²)', worst: 'O(n²)' },
+        selection: { best: 'O(n²)', avg: 'O(n²)', worst: 'O(n²)' },
+        insertion: { best: 'O(n)', avg: 'O(n²)', worst: 'O(n²)' },
+        merge: { best: 'O(n log n)', avg: 'O(n log n)', worst: 'O(n log n)' },
+        quick: { best: 'O(n log n)', avg: 'O(n log n)', worst: 'O(n²)' },
+        heap: { best: 'O(n log n)', avg: 'O(n log n)', worst: 'O(n log n)' },
+        cocktail: { best: 'O(n)', avg: 'O(n²)', worst: 'O(n²)' },
+        shell: { best: 'O(n log n)', avg: 'O(n log n)', worst: 'O(n²)' }
+      };
+
+      // --- 渲染 ---
+      return (
+        <div className="min-h-screen bg-gray-50 text-gray-800 font-sans p-4 md:p-8">
+          <div className="max-w-5xl mx-auto space-y-6">
+            
+            <header className="flex flex-col md:flex-row justify-between items-center border-b-2 border-blue-500 pb-4 gap-4">
+              <div className="flex items-center gap-3">
+                <BarChart3 className="w-8 h-8 text-blue-600" />
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{t.title}</h1>
+              </div>
+              
+              <button 
+                onClick={() => setLanguage(l => l === 'zh' ? 'ja' : 'zh')}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-full text-sm font-medium hover:bg-gray-50 text-blue-600 transition-colors"
+              >
+                <Globe className="w-4 h-4" />
+                {language === 'zh' ? '日本語に切り替え' : '切換為中文'}
+              </button>
+            </header>
+
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-semibold text-gray-600">
+                  <BookOpen className="w-4 h-4" /> {t.selectAlgo}
+                </label>
+                <select 
+                  value={selectedAlgorithm} 
+                  onChange={handleAlgorithmChange}
+                  disabled={isPlaying}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                >
+                  <option value="bubble">{t.algorithms.bubble.name}</option>
+                  <option value="selection">{t.algorithms.selection.name}</option>
+                  <option value="insertion">{t.algorithms.insertion.name}</option>
+                  <option value="merge">{t.algorithms.merge.name}</option>
+                  <option value="quick">{t.algorithms.quick.name}</option>
+                  <option value="heap">{t.algorithms.heap.name}</option>
+                  <option value="cocktail">{t.algorithms.cocktail.name}</option>
+                  <option value="shell">{t.algorithms.shell.name}</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-semibold text-gray-600">
+                  <Settings className="w-4 h-4" /> {t.speed}
+                </label>
+                <input 
+                  type="range" 
+                  min="1" 
+                  max="1000" 
+                  value={sortingSpeed} 
+                  onChange={(e) => setSortingSpeed(Number(e.target.value))}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                />
+                <div className="flex justify-between text-xs text-gray-400">
+                    <span>{t.fast} (1ms)</span>
+                    <span>{t.slow} (1s)</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-semibold text-gray-600">
+                  <Zap className="w-4 h-4" /> {t.size}: {arraySize}
+                </label>
+                <input 
+                  type="range" 
+                  min="5" 
+                  max="50" 
+                  value={arraySize} 
+                  onChange={handleSizeChange}
+                  disabled={isPlaying}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                />
+              </div>
+
+              <div className="flex gap-2 items-end">
+                <button 
+                  onClick={() => generateNewArray(arraySize, selectedAlgorithm)}
+                  className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg font-bold text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors"
+                >
+                  <RotateCcw className="w-4 h-4" /> {t.reset}
+                </button>
+              </div>
+
+              <div className="col-span-1 md:col-span-2 lg:col-span-4 flex gap-4 border-t border-gray-100 pt-4">
+                 <button
+                   onClick={handlePrev}
+                   disabled={currentStepIndex === 0}
+                   className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg font-bold transition-colors ${
+                     currentStepIndex === 0 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white border-2 border-blue-500 text-blue-600 hover:bg-blue-50'
+                   }`}
+                 >
+                   <ChevronLeft className="w-5 h-5" /> {t.prev}
+                 </button>
+
+                 <button
+                    onClick={togglePlay}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg font-bold transition-colors border-2 ${
+                      isPlaying 
+                      ? 'bg-red-50 text-red-600 border-red-500 hover:bg-red-100' 
+                      : 'bg-green-50 text-green-600 border-green-500 hover:bg-green-100'
+                    }`}
+                 >
+                    {isPlaying ? (
+                       <><Pause className="w-5 h-5 fill-current" /> {t.stop}</>
+                    ) : (
+                       <><Play className="w-5 h-5 fill-current" /> {t.start}</>
+                    )}
+                 </button>
+
+                 <button
+                   onClick={handleNext}
+                   disabled={currentStepIndex === steps.length - 1}
+                   className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg font-bold transition-colors ${
+                     currentStepIndex === steps.length - 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white border-2 border-blue-500 text-blue-600 hover:bg-blue-50'
+                   }`}
+                 >
+                   {t.next} <ChevronRight className="w-5 h-5" />
+                 </button>
+              </div>
+
+            </div>
+
+            <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-200 min-h-[400px] flex flex-col justify-end">
+              <div className="flex justify-between items-end h-[300px] gap-[2px] md:gap-1">
+                {currentArray.map((item, idx) => (
+                  <div 
+                    key={idx}
+                    className={`w-full rounded-t-md transition-all duration-75 ${getBarColor(item.state)}`}
+                    style={{ height: `${(item.value / arraySize) * 100}%` }}
+                    title={`Value: ${item.value}`}
+                  >
+                    {arraySize <= 20 && (
+                      <span className="block text-center text-xs text-white font-bold pt-1 overflow-hidden">
+                        {item.value}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+              
+              <div className="flex flex-wrap justify-center gap-4 mt-6 text-sm text-gray-600">
+                <div className="flex items-center gap-2"><div className={`w-4 h-4 rounded ${PRIMARY_COLOR}`}></div> {t.unsorted}</div>
+                <div className="flex items-center gap-2"><div className={`w-4 h-4 rounded ${COMPARING_COLOR}`}></div> {t.comparing}</div>
+                <div className="flex items-center gap-2"><div className={`w-4 h-4 rounded ${SWAP_COLOR}`}></div> {t.swapping}</div>
+                <div className="flex items-center gap-2"><div className={`w-4 h-4 rounded ${SORTED_COLOR}`}></div> {t.sorted}</div>
+                {['merge', 'quick', 'heap'].includes(selectedAlgorithm) && (
+                     <div className="flex items-center gap-2"><div className={`w-4 h-4 rounded ${MERGE_RANGE_COLOR}`}></div> {t.range}</div>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="md:col-span-2 bg-blue-50 p-6 rounded-xl border border-blue-100">
+                <div className="flex items-center gap-2 mb-3 text-blue-800">
+                  <Info className="w-5 h-5" />
+                  <h3 className="text-lg font-bold">{t.algorithms[selectedAlgorithm].name}</h3>
+                </div>
+                <p className="text-gray-700 leading-relaxed mb-4">
+                  {t.algorithms[selectedAlgorithm].desc}
+                </p>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div className="bg-white p-2 rounded shadow-sm">
+                    <div className="text-xs text-gray-500 uppercase">{t.best}</div>
+                    <div className="font-mono font-bold text-green-600">{complexities[selectedAlgorithm].best}</div>
+                  </div>
+                  <div className="bg-white p-2 rounded shadow-sm">
+                    <div className="text-xs text-gray-500 uppercase">{t.avg}</div>
+                    <div className="font-mono font-bold text-yellow-600">{complexities[selectedAlgorithm].avg}</div>
+                  </div>
+                  <div className="bg-white p-2 rounded shadow-sm">
+                    <div className="text-xs text-gray-500 uppercase">{t.worst}</div>
+                    <div className="font-mono font-bold text-red-600">{complexities[selectedAlgorithm].worst}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gray-800 text-white p-6 rounded-xl shadow-md">
+                <h3 className="text-lg font-bold mb-4 border-b border-gray-600 pb-2">{t.statsTitle}</h3>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center border-b border-gray-700 pb-2 mb-2">
+                    <span className="text-gray-300 font-bold">{t.step}</span>
+                    <span className="font-mono text-xl text-white">{currentStepIndex} / {steps.length - 1}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">{t.comparisons}</span>
+                    <span className="font-mono text-xl text-yellow-400">{currentData.comparisons}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">{t.accesses}</span>
+                    <span className="font-mono text-xl text-blue-400">{currentData.accesses}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">{t.currentState}</span>
+                    <span className={`font-bold px-2 py-1 rounded text-sm ${isPlaying ? 'bg-green-600' : (isFinished ? 'bg-blue-600' : 'bg-gray-600')}`}>
+                      {isPlaying ? t.sorting : (isFinished ? t.finished : t.paused)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<SortingVisualizer />);
+  </script>
+</body>
+</html>
