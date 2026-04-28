@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>資訊課：AI 數位影像工作坊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+        .white-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        .copy-btn:active {
+            transform: scale(0.95);
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-12">
+
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-blue-500 to-indigo-600 py-12 px-6 text-center shadow-md">
+        <h1 class="text-4xl md:text-5xl font-bold mb-4 text-white">🚀 AI 數位影像工作坊</h1>
+        <p class="text-blue-50 max-w-2xl mx-auto text-lg">
+            我們將利用 Gemini Canvas 協作開發，從無到有打造專屬的網頁修圖工具。
+        </p>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-6 mt-8 space-y-8">
+
+        <!-- Section 1: The Start -->
+        <section class="white-card p-6">
+            <div class="flex items-center mb-4">
+                <i class="fa-solid fa-terminal text-blue-600 text-xl mr-3"></i>
+                <h2 class="text-2xl font-bold text-slate-800">起手式指令</h2>
+            </div>
+            <p class="text-slate-600 mb-4 text-sm">請複製以下指令，貼入 Gemini 對話框並確認開啟 Canvas 模式：</p>
+            <div class="relative bg-slate-50 rounded-lg p-5 border border-slate-200">
+                <pre id="startPrompt" class="text-sm md:text-base leading-relaxed text-indigo-700 font-medium">請用 HTML5, CSS3 和 Vanilla JavaScript 幫我寫一個專業的『AI 數位影像工作坊』網頁 App。
+
+功能需求：
+1. 介面設計：使用深色主題（Dark Mode），左側是控制面板，右側是大型 Canvas 畫布預覽區。
+2. 圖片處理：具備『上傳圖片』按鈕，圖片需自動縮放以適應畫布。
+3. 濾鏡工具：先實作『黑白 (Grayscale)』與『負片 (Invert)』功能。
+4. 數值調整：加入一個『亮度 (Brightness)』滑桿，範圍從 0% 到 200%。
+5. 存檔功能：具備『下載圖片』按鈕，點擊後可將處理後的 Canvas 存成 PNG。
+
+請開啟 Canvas 模式呈現代碼，並確保程式碼有適當註解，方便我後續添加功能。</pre>
+                <button onclick="copyText('startPrompt')" class="copy-btn absolute top-3 right-3 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm transition-all shadow-sm">
+                    <i class="fa-regular fa-copy mr-1"></i> 複製指令
+                </button>
+            </div>
+        </section>
+
+        <!-- Section 2: Challenges -->
+        <section class="white-card p-6">
+            <div class="flex items-center mb-4">
+                <i class="fa-solid fa-wand-magic-sparkles text-purple-600 text-xl mr-3"></i>
+                <h2 class="text-2xl font-bold text-slate-800">進階挑戰</h2>
+            </div>
+            <p class="text-slate-600 mb-4 text-sm">基礎功能完成後，可嘗試透過「局部修改」指令增加以下功能（選填）：</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- 視覺特效類 -->
+                <div class="bg-slate-50 p-4 rounded-lg border border-slate-100 hover:border-purple-200 transition-colors">
+                    <h3 class="font-bold text-purple-700 mb-1"><i class="fa-solid fa-wand-magic mr-2"></i>視覺特效類</h3>
+                    <ul class="text-sm text-slate-600 space-y-1 list-disc list-inside">
+                        <li>增加「復古色 (Sepia)」濾鏡按鈕</li>
+                        <li>增加「模糊 (Blur)」滑桿調控強度</li>
+                        <li>增加「銳化 (Sharpen)」或「浮雕」效果</li>
+                        <li>增加「冷暖色調」調整功能</li>
+                    </ul>
+                </div>
+
+                <!-- 實用工具類 -->
+                <div class="bg-slate-50 p-4 rounded-lg border border-slate-100 hover:border-purple-200 transition-colors">
+                    <h3 class="font-bold text-purple-700 mb-1"><i class="fa-solid fa-toolbox mr-2"></i>實用工具類</h3>
+                    <ul class="text-sm text-slate-600 space-y-1 list-disc list-inside">
+                        <li>增加「文字浮水印」輸入框與放置按鈕</li>
+                        <li>增加「智慧重置 (Reset)」恢復原始照片</li>
+                        <li>增加「復原 (Undo)」上一步操作</li>
+                        <li>增加「旋轉圖片 (90度)」或水平翻轉功能</li>
+                    </ul>
+                </div>
+
+                <!-- 高級操作類 -->
+                <div class="bg-slate-50 p-4 rounded-lg border border-slate-100 hover:border-orange-200 transition-colors">
+                    <h3 class="font-bold text-orange-700 mb-1"><i class="fa-solid fa-microchip mr-2"></i>高級操作類</h3>
+                    <ul class="text-sm text-slate-600 space-y-1 list-disc list-inside">
+                        <li>實作「畫筆工具」手動塗抹馬賽克</li>
+                        <li>實作「簡易去背 (Chromakey)」移除特定顏色</li>
+                        <li>實作「圖片裁切 (Crop)」自由選取區域</li>
+                        <li>實作「對比度 (Contrast)」即時滑桿調整</li>
+                    </ul>
+                </div>
+
+                <!-- 介面優化類 -->
+                <div class="bg-slate-50 p-4 rounded-lg border border-slate-100 hover:border-blue-200 transition-colors">
+                    <h3 class="font-bold text-blue-700 mb-1"><i class="fa-solid fa-palette mr-2"></i>介面優化類</h3>
+                    <ul class="text-sm text-slate-600 space-y-1 list-disc list-inside">
+                        <li>製作「多選濾鏡清單」卡片式選單</li>
+                        <li>加入「操作歷史紀錄」側邊欄</li>
+                        <li>實現「拖放 (Drag & Drop)」直接上傳圖片</li>
+                        <li>製作「對比模式」長按看原圖/修改圖對比</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Grading -->
+        <section class="white-card p-6 border-l-8 border-yellow-400">
+            <div class="flex items-center mb-4">
+                <i class="fa-solid fa-list-check text-yellow-600 text-xl mr-3"></i>
+                <h2 class="text-2xl font-bold text-slate-800">評分標準</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="border-b border-slate-100">
+                            <th class="py-3 px-4 text-slate-500 font-medium">評分項目</th>
+                            <th class="py-3 px-4 text-slate-500 font-medium">內容描述</th>
+                            <th class="py-3 px-4 text-slate-500 font-medium text-right">佔比</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-slate-700">
+                        <tr class="border-b border-slate-50">
+                            <td class="py-4 px-4 font-bold">基礎功能</td>
+                            <td class="py-4 px-4">上傳、顯示、存檔功能正常。</td>
+                            <td class="py-4 px-4 text-right font-mono text-blue-600 font-bold">30%</td>
+                        </tr>
+                        <tr class="border-b border-slate-50">
+                            <td class="py-4 px-4 font-bold">濾鏡互動</td>
+                            <td class="py-4 px-4">具備至少 3 種效果且即時反應。</td>
+                            <td class="py-4 px-4 text-right font-mono text-blue-600 font-bold">20%</td>
+                        </tr>
+                        <tr class="border-b border-slate-50">
+                            <td class="py-4 px-4 font-bold">WSQ 反思</td>
+                            <td class="py-4 px-4">能指出代碼結構並記錄開發過程。</td>
+                            <td class="py-4 px-4 text-right font-mono text-blue-600 font-bold">20%</td>
+                        </tr>
+                        <tr class="border-b border-slate-50">
+                            <td class="py-4 px-4 font-bold">進階魔改</td>
+                            <td class="py-4 px-4">成功挑戰任一進階任務。</td>
+                            <td class="py-4 px-4 text-right font-mono text-blue-600 font-bold">20%</td>
+                        </tr>
+                        <tr>
+                            <td class="py-4 px-4 font-bold">UI 質感</td>
+                            <td class="py-4 px-4">版面協調、按鈕具備動畫細節。</td>
+                            <td class="py-4 px-4 text-right font-mono text-blue-600 font-bold">10%</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Footer Reminder -->
+        <div class="text-center text-slate-400 text-sm py-4">
+            <p><i class="fa-solid fa-circle-exclamation mr-1"></i> 重要提醒：下課前請務必下載並儲存 index.html，否則代碼將無法保留。</p>
+        </div>
+
+    </main>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-8 py-3 rounded-full shadow-lg opacity-0 transition-all duration-300 pointer-events-none">
+        已成功複製指令！
+    </div>
+
+    <script>
+        function copyText(elementId) {
+            const text = document.getElementById(elementId).innerText;
+            const tempInput = document.createElement("textarea");
+            tempInput.value = text;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempInput);
+
+            // Show Toast
+            const toast = document.getElementById('toast');
+            toast.style.opacity = '1';
+            toast.style.transform = 'translate(-50%, -10px)';
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translate(-50%, 0px)';
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
